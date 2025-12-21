@@ -67,6 +67,7 @@ struct config {
 
 	enum bus_type bus;
 	char *reg;
+	unsigned int ext_csd_rev;
 };
 
 enum REG_TYPE {
@@ -586,6 +587,7 @@ static void print_mmc_cid(struct config *config, char *cid)
 	unsigned int mdt_year;
 	unsigned int crc;
 	char *manufacturer = NULL;
+	int base_year = 1997;
 
 	parse_bin(cid, "8u6r2u8u48a4u4u32u4u4u7u1r",
 		&mid, &cbx, &oid, &pnm[0], &prv_major, &prv_minor, &psn,
@@ -594,6 +596,18 @@ static void print_mmc_cid(struct config *config, char *cid)
 	pnm[6] = '\0';
 
 	manufacturer = get_manufacturer(config, mid);
+
+	if (config->ext_csd_rev) {
+		/* Adjust base year according to ext_csd_rev */
+		if (config->ext_csd_rev > 8) {
+			base_year = 2029;
+			if (mdt_year >= 13)
+				base_year = 2013;
+		} else if (config->ext_csd_rev > 4) {
+			base_year = 2013;
+		}
+	}
+
 
 	if (config->verbose) {
 		printf("======MMC/CID======\n");
@@ -626,7 +640,10 @@ static void print_mmc_cid(struct config *config, char *cid)
 		printf("(%u.%u)\n", prv_major, prv_minor);
 		printf("\tPSN: 0x%08x\n", psn);
 		printf("\tMDT: 0x%01x%01x %u %s\n", mdt_month, mdt_year,
-		       1997 + mdt_year, months[mdt_month]);
+		       base_year + mdt_year, months[mdt_month]);
+		if (!config->ext_csd_rev)
+			printf("\tWarn: ext_csd_rev not provided, "
+			       "manufacturing date year may be wrong.\n");
 		printf("\tCRC: 0x%02x\n", crc);
 	} else {
 		if (manufacturer)
@@ -637,8 +654,11 @@ static void print_mmc_cid(struct config *config, char *cid)
 
 		printf("product: '%s' %u.%u\n", pnm, prv_major, prv_minor);
 		printf("serial: 0x%08x\n", psn);
-		printf("manufacturing date: %u %s\n", 1997 + mdt_year,
+		printf("manufacturing date: %u %s\n", base_year + mdt_year,
 		       months[mdt_month]);
+		if (!config->ext_csd_rev)
+			printf("Warn: ext_csd_rev not provided, "
+			       "manufacturing date year may be wrong.\n");
 	}
 }
 
