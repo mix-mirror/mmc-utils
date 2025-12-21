@@ -74,7 +74,7 @@ static inline __u32 per_byte_htole32(__u8 *arr)
 	return arr[0] | arr[1] << 8 | arr[2] << 16 | arr[3] << 24;
 }
 
-static int read_extcsd(int fd, __u8 *ext_csd)
+int read_extcsd(int fd, __u8 *ext_csd)
 {
 	int ret = 0;
 	struct mmc_ioc_cmd idata = {};

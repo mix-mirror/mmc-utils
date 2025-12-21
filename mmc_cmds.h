@@ -17,12 +17,15 @@
  * those modifications are Copyright (c) 2016 SanDisk Corp.
  */
 
+#include <linux/types.h>
+
 typedef int (*CommandFunction)(int argc, char **argv);
 
 void print_usage(CommandFunction func);
 
 /* mmc_cmds.c */
 int do_read_extcsd(int nargs, char **argv);
+int read_extcsd(int fd, __u8 *ext_csd);
 int do_write_extcsd(int nargs, char **argv);
 int do_writeprotect_boot_get(int nargs, char **argv);
 int do_writeprotect_boot_set(int nargs, char **argv);

@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "mmc.h"
 #include "mmc_cmds.h"
@@ -2201,10 +2202,45 @@ err:
 	return ret;
 }
 
+static void read_mmc_extcsd_rev(struct config *config)
+{
+	DIR *dir;
+	struct dirent *dent;
+
+	if (config->bus != MMC)
+		return;
+
+	dir = opendir("block");
+	if (!dir)
+		return;
+
+	while ((dent = readdir(dir)) != NULL) {
+		if (strncmp(dent->d_name, "mmcblk", 6) == 0) {
+			char devpath[512];
+			int fd;
+			__u8 ext_csd[512];
+
+			snprintf(devpath, sizeof(devpath), "/dev/%s", dent->d_name);
+			fd = open(devpath, O_RDONLY);
+			if (fd >= 0) {
+				if (read_extcsd(fd, ext_csd) == 0)
+					config->ext_csd_rev = ext_csd[EXT_CSD_REV];
+				close(fd);
+			}
+
+			break;
+		}
+	}
+
+	closedir(dir);
+}
+
 static int process_reg_from_file(struct config *config, enum REG_TYPE reg)
 {
 	char *reg_content = NULL;
 	int ret = 0;
+
+	read_mmc_extcsd_rev(config);
 
 	switch (reg) {
 	case CID:
