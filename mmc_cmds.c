@@ -1524,6 +1524,7 @@ int do_read_extcsd(int nargs, char **argv)
 	ext_csd_rev = ext_csd[EXT_CSD_REV];
 
 	switch (ext_csd_rev) {
+	case 9:
 	case 8:
 		str = "5.1";
 		break;
