@@ -100,6 +100,10 @@ static struct ids_database sd_database[] = {
 		.manufacturer = "Silicon Power",
 	},
 	{
+		.id = 0x09,
+		.manufacturer = "ATP",
+	},
+	{
 		.id = 0x18,
 		.manufacturer = "Infineon",
 	},
