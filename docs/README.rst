@@ -38,8 +38,8 @@ mmc-utils was written by Chris Ball <cjb@laptop.org> and <chris@printf.net>.
 Maintainers
 -----------
 
-Avri Altman <avri.altman@wdc.com>
-Ulf Hansson <ulf.hansson@linaro.org>
+Avri Altman <avri.altman@sandisk.com>
+Ulf Hansson <ulfh@kernel.org>
 
 
 Building
