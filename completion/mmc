@@ -1,0 +1,54 @@
+_mmc_complete() {
+	local cur prev words cword
+	_init_completion || return
+
+	local devices
+	# Include rpmb, bootN, and partition nodes alongside the base device.
+	devices=$(compgen -G "/dev/mmcblk*" 2>/dev/null | grep -E '^/dev/mmcblk[0-9]+(rpmb|boot[0-9]+|p[0-9]+)?$')
+
+	local mmcbin
+	mmcbin=$(type -P "${words[0]}") || return
+
+	# "mmc help" prints one "Usage for command\t<verb words...> <args...>"
+	# line per command. Argument placeholders always start with '<', so
+	# stripping from the first '<' onward leaves just the verb words.
+	local verbs
+	verbs=$("$mmcbin" help 2>/dev/null | sed -n 's/^Usage for command[[:space:]]*//p' | sed 's/<.*//')
+	[[ -z $verbs ]] && return
+
+	local -a typed=("${words[@]:1:cword-1}")
+	local -A next_words=()
+	local have_leaf=
+
+	local line i match
+	while IFS= read -r line; do
+		[[ -z $line ]] && continue
+		local -a w
+		read -ra w <<<"$line"
+		[[ ${#w[@]} -lt ${#typed[@]} ]] && continue
+
+		match=1
+		for ((i = 0; i < ${#typed[@]}; i++)); do
+			if [[ ${w[i]} != "${typed[i]}" ]]; then
+				match=0
+				break
+			fi
+		done
+		[[ $match -eq 0 ]] && continue
+
+		if [[ ${#w[@]} -gt ${#typed[@]} ]]; then
+			next_words[${w[${#typed[@]}]}]=1
+		else
+			have_leaf=1
+		fi
+	done <<<"$verbs"
+
+	if [[ ${#next_words[@]} -gt 0 ]]; then
+		COMPREPLY=($(compgen -W "${!next_words[*]}" -- "$cur"))
+	elif [[ -n $have_leaf ]]; then
+		COMPREPLY=($(compgen -W "$devices" -- "$cur"))
+	fi
+}
+
+complete -F _mmc_complete mmc
+complete -F _mmc_complete ./mmc
