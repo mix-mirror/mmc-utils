@@ -490,13 +490,45 @@ static void parse_mmc_cid(char *raw, struct mmc_cid *c)
 }
 
 /* MMC/SD information parsing functions */
-static void print_sd_cid(struct config *config, char *cid)
+static const char *month_name(unsigned int month)
 {
 	static const char *months[] = { "invalid0",
 		"jan", "feb", "mar", "apr", "may", "jun",
 		"jul", "aug", "sep", "oct", "nov", "dec",
 		"invalid1", "invalid2", "invalid3",
 	};
+
+	if (month >= ARRAY_SIZE(months))
+		return "invalid";
+
+	return months[month];
+}
+
+static unsigned int sd_cid_year(const struct sd_cid *c)
+{
+	return 2000 + c->mdt_year;
+}
+
+static unsigned int mmc_cid_year(const struct mmc_cid *c, unsigned int ext_csd_rev)
+{
+	unsigned int base_year = 1997;
+
+	if (ext_csd_rev) {
+		/* Adjust base year according to ext_csd_rev */
+		if (ext_csd_rev > 8) {
+			base_year = 2029;
+			if (c->mdt_year >= 13)
+				base_year = 2013;
+		} else if (ext_csd_rev > 4) {
+			base_year = 2013;
+		}
+	}
+
+	return base_year + c->mdt_year;
+}
+
+static void print_sd_cid(struct config *config, char *cid)
+{
 	struct sd_cid c;
 	char *manufacturer;
 
@@ -514,15 +546,15 @@ static void print_sd_cid(struct config *config, char *cid)
 		printf("(%u.%u)\n", c.prv_major, c.prv_minor);
 		printf("\tPSN: 0x%08x\n", c.psn);
 		printf("\tMDT: 0x%02x%01x %u %s\n", c.mdt_year, c.mdt_month,
-		       2000 + c.mdt_year, months[c.mdt_month]);
+		       sd_cid_year(&c), month_name(c.mdt_month));
 		printf("\tCRC: 0x%02x\n", c.crc);
 	} else {
 		printf("manufacturer: '%s' '%s'\n", manufacturer, c.oid);
 
 		printf("product: '%s' %u.%u\n", c.pnm, c.prv_major, c.prv_minor);
 		printf("serial: 0x%08x\n", c.psn);
-		printf("manufacturing date: %u %s\n", 2000 + c.mdt_year,
-		       months[c.mdt_month]);
+		printf("manufacturing date: %u %s\n", sd_cid_year(&c),
+		       month_name(c.mdt_month));
 	}
 
 	free(manufacturer);
@@ -530,29 +562,13 @@ static void print_sd_cid(struct config *config, char *cid)
 
 static void print_mmc_cid(struct config *config, char *cid)
 {
-	static const char *months[] = { "invalid0",
-		"jan", "feb", "mar", "apr", "may", "jun",
-		"jul", "aug", "sep", "oct", "nov", "dec",
-		"invalid1", "invalid2", "invalid3",
-	};
 	struct mmc_cid c;
 	char *manufacturer;
-	int base_year = 1997;
+	unsigned int year;
 
 	parse_mmc_cid(cid, &c);
 	manufacturer = get_manufacturer(config, c.mid);
-
-	if (config->ext_csd_rev) {
-		/* Adjust base year according to ext_csd_rev */
-		if (config->ext_csd_rev > 8) {
-			base_year = 2029;
-			if (c.mdt_year >= 13)
-				base_year = 2013;
-		} else if (config->ext_csd_rev > 4) {
-			base_year = 2013;
-		}
-	}
-
+	year = mmc_cid_year(&c, config->ext_csd_rev);
 
 	if (config->verbose) {
 		printf("======MMC/CID======\n");
@@ -581,7 +597,7 @@ static void print_mmc_cid(struct config *config, char *cid)
 		printf("(%u.%u)\n", c.prv_major, c.prv_minor);
 		printf("\tPSN: 0x%08x\n", c.psn);
 		printf("\tMDT: 0x%01x%01x %u %s\n", c.mdt_month, c.mdt_year,
-		       base_year + c.mdt_year, months[c.mdt_month]);
+		       year, month_name(c.mdt_month));
 		if (!config->ext_csd_rev)
 			printf("\tWarn: ext_csd_rev not provided, "
 			       "manufacturing date year may be wrong.\n");
@@ -592,8 +608,8 @@ static void print_mmc_cid(struct config *config, char *cid)
 
 		printf("product: '%s' %u.%u\n", c.pnm, c.prv_major, c.prv_minor);
 		printf("serial: 0x%08x\n", c.psn);
-		printf("manufacturing date: %u %s\n", base_year + c.mdt_year,
-		       months[c.mdt_month]);
+		printf("manufacturing date: %u %s\n", year,
+		       month_name(c.mdt_month));
 		if (!config->ext_csd_rev)
 			printf("Warn: ext_csd_rev not provided, "
 			       "manufacturing date year may be wrong.\n");
